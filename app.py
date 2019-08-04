@@ -1,9 +1,15 @@
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, request
 from flask_restful import Resource, Api
 from typing import List, Dict, Union
 
+from flask_jwt import JWT, jwt_required
+from security import authenticate, identity
+
 app = Flask(__name__)
+app.secret_key = 'secret'
 api = Api(app)
+
+jwt = JWT(app, authenticate, identity)  # /auth
 
 stores: List = [
     {
@@ -21,6 +27,7 @@ items: List = []
 
 
 class Item(Resource):
+    @jwt_required()
     def get(self, name: str):
         result = self.getItem(name)
         return {'item': result}, 200 if result is not None else 404
@@ -48,7 +55,5 @@ class ItemList(Resource):
 
 api.add_resource(Item, '/item/<string:name>')
 api.add_resource(ItemList, '/items')
-
-
 
 app.run(port=5000, debug=True)
