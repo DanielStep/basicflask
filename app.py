@@ -1,5 +1,5 @@
 from flask import Flask, jsonify, request
-from flask_restful import Resource, Api
+from flask_restful import Resource, Api, reqparse
 from typing import List, Dict, Union
 
 from flask_jwt import JWT, jwt_required
@@ -27,6 +27,9 @@ items: List = []
 
 
 class Item(Resource):
+    parser = reqparse.RequestParser()
+    parser.add_argument('price', type=float, required=True, help="Field cannot be blank")
+
     @jwt_required()
     def get(self, name: str):
         result = self.getItem(name)
@@ -36,10 +39,25 @@ class Item(Resource):
         if self.getItem(name) is not None:
             return {'message': "An item with name '{}' already exists".format(name)}, 400
 
-        data = request.get_json()
+        data = Item.parser.parse_args()
         result: Dict = {'name': name, 'price': data['price']}
         items.append(result)
         return result, 201
+
+    def delete(self, name: str):
+        global items
+        items = list(filter(lambda item: item['name'] != name, items))
+        return {'message': "Item deleted"}
+
+    def put(self, name: str):
+        data = Item.parser.parse_args()
+        item = self.getItem(name)
+        if item is None:
+            item = {'name': name, 'price': data['price']}
+            items.append(item)
+        else:
+            item.update(data)
+        return item
 
     def getItem(self, name: str):
         return next(
